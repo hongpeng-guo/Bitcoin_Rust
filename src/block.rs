@@ -46,7 +46,6 @@ impl Hashable for Block {
     }
 }
 
-#[cfg(any(test, test_utilities))]
 pub mod test {
     use super::*;
     use crate::crypto::hash::H256;

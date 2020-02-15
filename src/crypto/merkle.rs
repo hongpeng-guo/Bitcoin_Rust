@@ -71,7 +71,7 @@ impl MerkleTree {
             vec_proof.push(self.all_entry[i*self.leaf_size+index_append]);
             index_current = (index_current-index_current%2)/2;
         }
-	vec_proof
+	    vec_proof
     }
 }
 

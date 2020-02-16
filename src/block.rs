@@ -13,17 +13,17 @@ pub content: Content,
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Header {
 pub parent: H256,
-nonce: u32,
-difficulty: H256,
-timestamp: u32,
-merkle_root: H256,
+pub nonce: u32,
+pub difficulty: H256,
+pub timestamp: u128,
+pub merkle_root: H256,
 }
 
 
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Content {
-content: Vec<Transaction>,
+pub content: Vec<Transaction>,
 }
 
 impl Hashable for Transaction {

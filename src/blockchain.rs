@@ -5,13 +5,13 @@ use rand::Rng;
 use crate::block::test::generate_random_block;
 
 pub struct Blockchain {
-data: HashMap<H256, BlockStruct>,
+pub data: HashMap<H256, BlockStruct>,
 tip_hash: H256,
 tip_height: u32,
 }
 
-struct BlockStruct {
-block_content: Block,
+pub struct BlockStruct {
+pub block_content: Block,
 block_height: u32,
 }
 

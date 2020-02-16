@@ -22,8 +22,8 @@ pub fn verify(t: &Transaction, public_key: &<Ed25519KeyPair as KeyPair>::PublicK
     peer_public_key.verify(&t_serialized, signature.as_ref()).is_ok()
 }
 
-#[cfg(any(test, test_utilities))]
-mod tests {
+// #[cfg(any(test, test_utilities))]
+pub mod tests {
     use super::*;
     use crate::crypto::key_pair;
 

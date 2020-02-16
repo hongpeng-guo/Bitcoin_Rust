@@ -143,6 +143,7 @@ impl Context {
                 let block = Block{header: header, content: content};
                 if Hashable::hash(&block) <= difficulty{
                     blockchain.insert(&block);
+                    println!("found!");
                     break;
                 } 
             }

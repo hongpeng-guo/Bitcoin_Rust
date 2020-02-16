@@ -6,8 +6,8 @@ use crate::block::test::generate_random_block;
 
 pub struct Blockchain {
 pub data: HashMap<H256, BlockStruct>,
-tip_hash: H256,
-tip_height: u32,
+pub tip_hash: H256,
+pub tip_height: u32,
 }
 
 pub struct BlockStruct {

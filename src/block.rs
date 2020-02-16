@@ -55,7 +55,8 @@ pub mod test {
         let mut default_transaction: Vec<Transaction> = Vec::new();
         let mut t = Transaction{in_put: vec![0], out_put: vec![0]};
         default_transaction.push(t);
-        let difficulty_array:[u8; 32]=[0; 32];
+        let mut difficulty_array:[u8; 32]=[0; 32];
+        difficulty_array[2] = 64;
         let default_merkle_root: H256 = Hashable::hash(&default_transaction[0]);
         let random_header = Header{parent: *parent, nonce: rng.gen(), difficulty: difficulty_array.into(), timestamp: rng.gen(), merkle_root: default_merkle_root};
         let random_content = Content{content: default_transaction};

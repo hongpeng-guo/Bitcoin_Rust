@@ -100,6 +100,8 @@ impl Context {
 
     fn miner_loop(&mut self) {
         // main mining loop
+
+        let loop_begin = SystemTime::now();
         loop {
             // check and react to control signals
             match self.operating_state {
@@ -143,7 +145,6 @@ impl Context {
                 let block = Block{header: header, content: content};
                 if Hashable::hash(&block) <= difficulty{
                     blockchain.insert(&block);
-                    println!("found!");
                     break;
                 } 
             }
@@ -153,6 +154,13 @@ impl Context {
                     let interval = time::Duration::from_micros(i as u64);
                     thread::sleep(interval);
                 }
+            }
+
+            let loop_duration = SystemTime::now().duration_since(loop_begin).unwrap().as_secs();
+            if loop_duration > 100{
+                println!("BlockChain Length is {}, Duration Length is {}, Mining Rate is {}", 
+                blockchain.tip_height, loop_duration, blockchain.tip_height as f32/loop_duration as f32);
+                break;
             }
         }
     }

@@ -128,10 +128,11 @@ impl Context {
             }
 
             // TODO: actual mining
-            let mut blockchain = self.blockchain.lock().unwrap();
+            let blockchain = self.blockchain.lock().unwrap();
             let parent = blockchain.tip();
             let timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
             let difficulty = blockchain.data.get(&parent).unwrap().block_content.header.difficulty;
+            std::mem::drop(blockchain);
 
             let mut default_transaction: Vec<Transaction> = Vec::new();
             let t = Transaction{in_put: vec![0], out_put: vec![0]};
@@ -146,6 +147,7 @@ impl Context {
                 let content = Content{content: default_transaction.clone()};
                 let block = Block{header: header, content: content};
                 if Hashable::hash(&block) <= difficulty{
+                    let mut blockchain = self.blockchain.lock().unwrap();
                     blockchain.insert(&block);
                     self.server.broadcast(Message::NewBlockHashes(vec![Hashable::hash(&block)]));
                     break;
@@ -161,6 +163,7 @@ impl Context {
 
             let loop_duration = SystemTime::now().duration_since(loop_begin).unwrap().as_secs();
             if loop_duration > 100{
+                let blockchain = self.blockchain.lock().unwrap();
                 println!("BlockChain Length is {}, Duration Length is {}, Mining Rate is {}", 
                 blockchain.tip_height, loop_duration, blockchain.tip_height as f32/loop_duration as f32);
                 break;

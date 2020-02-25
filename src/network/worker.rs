@@ -45,6 +45,7 @@ impl Context {
 
     fn worker_loop(&self) {
         loop {
+            println!("{}", self.blockchain.lock().unwrap().tip_hash);
             let msg = self.msg_chan.recv().unwrap();
             let (msg, peer) = msg;
             let msg: Message = bincode::deserialize(&msg).unwrap();

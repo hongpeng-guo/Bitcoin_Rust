@@ -2,7 +2,8 @@ use crate::block::Block;
 use std::collections::HashMap;
 use crate::crypto::hash::{H256, Hashable};
 use rand::Rng;
-use crate::block::test::generate_random_block;
+use log::debug;
+use crate::block::test::{generate_random_block, generate_static_block};
 
 pub struct Blockchain {
 pub data: HashMap<H256, BlockStruct>,
@@ -18,10 +19,16 @@ block_height: u32,
 impl Blockchain {
     /// Create a new blockchain, only containing the genesis block
     pub fn new() -> Self {
-        let mut rng = rand::thread_rng();
-        let root_array:[u8; 32]=[rng.gen(); 32];
+        // In part 3, initiate all blockchain genesis being the same.
+        // let mut rng = rand::thread_rng();
+        // let root_array:[u8; 32]=[rng.gen(); 32];
+        // let root_hash: H256 = root_array.into();
+        // let genesis_block: Block = generate_random_block(&root_hash);
+
+        let root_array:[u8; 32]=[0; 32];
         let root_hash: H256 = root_array.into();
-        let genesis_block: Block = generate_random_block(&root_hash);
+        let genesis_block: Block = generate_static_block(&root_hash);
+
         let mut data_new = HashMap::new();
         data_new.insert(Hashable::hash(&genesis_block), BlockStruct{block_content: genesis_block.clone(), block_height: 0});
         Blockchain{data: data_new, tip_hash: Hashable::hash(&genesis_block), tip_height: 0}
@@ -29,6 +36,7 @@ impl Blockchain {
 
     /// Insert a block into blockchain
     pub fn insert(&mut self, block: &Block) {
+        debug!("BCInsertOK: {}", self.data.contains_key(&block.header.parent));
         let this_height =(self.data[&block.header.parent]).block_height+1;
         self.data.insert(Hashable::hash(block), BlockStruct{block_content: (*block).clone(), block_height: this_height});
         if this_height > self.tip_height {

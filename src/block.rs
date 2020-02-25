@@ -69,7 +69,7 @@ pub mod test {
         let t = Transaction{in_put: vec![0], out_put: vec![0]};
         default_transaction.push(t);
         let mut difficulty_array:[u8; 32]=[0; 32];
-        difficulty_array[2] = 64;
+        difficulty_array[2] = 128;
         let default_merkle_root: H256 = Hashable::hash(&default_transaction[0]);
         let static_header = Header{parent: *parent, nonce: 1, difficulty: difficulty_array.into(), timestamp: 12345, merkle_root: default_merkle_root};
         let static_content = Content{content: default_transaction};

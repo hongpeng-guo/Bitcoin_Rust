@@ -104,6 +104,8 @@ impl Context {
         // main mining loop
 
         let loop_begin = SystemTime::now();
+        let mut block_mined = 0;
+
         loop {
             // check and react to control signals
             match self.operating_state {
@@ -149,6 +151,7 @@ impl Context {
                 if Hashable::hash(&block) <= difficulty{
                     let mut blockchain = self.blockchain.lock().unwrap();
                     blockchain.insert(&block);
+                    block_mined += 1;
                     self.server.broadcast(Message::NewBlockHashes(vec![Hashable::hash(&block)]));
                     break;
                 } 
@@ -163,11 +166,17 @@ impl Context {
 
             let loop_duration = SystemTime::now().duration_since(loop_begin).unwrap().as_secs();
             if loop_duration > 100{
-                let blockchain = self.blockchain.lock().unwrap();
-                println!("BlockChain Length is {}, Duration Length is {}, Mining Rate is {}", 
-                blockchain.tip_height, loop_duration, blockchain.tip_height as f32/loop_duration as f32);
+                println!("Blocks minded is {}", block_mined);
                 break;
             }
         }
+
+        let mut loop_duration = SystemTime::now().duration_since(loop_begin).unwrap().as_secs();
+        while loop_duration < 110 {
+            loop_duration = SystemTime::now().duration_since(loop_begin).unwrap().as_secs();
+            continue;
+        }
+        let blockchain = self.blockchain.lock().unwrap();
+        println!("BlockChain Length is {}", blockchain.tip_height);
     }
 }

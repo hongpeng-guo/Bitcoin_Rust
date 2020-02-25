@@ -53,7 +53,7 @@ pub mod test {
     pub fn generate_random_block(parent: &H256) -> Block {
         let mut rng = rand::thread_rng();
         let mut default_transaction: Vec<Transaction> = Vec::new();
-        let mut t = Transaction{in_put: vec![0], out_put: vec![0]};
+        let t = Transaction{in_put: vec![0], out_put: vec![0]};
         default_transaction.push(t);
         let mut difficulty_array:[u8; 32]=[0; 32];
         difficulty_array[2] = 64;

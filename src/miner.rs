@@ -12,9 +12,10 @@ use rand::{thread_rng, Rng};
 
 use crate::blockchain::Blockchain;
 use crate::block::{Block, Header, Content};
-use crate::transaction::{Transaction, tests::generate_random_transaction};
+use crate::transaction::Transaction;
 use crate::crypto::merkle::MerkleTree;
-use crate::crypto::hash::{H256, Hashable};
+use crate::crypto::hash::Hashable;
+use crate::network::message::Message;
 
 
 enum ControlSignal {
@@ -43,7 +44,8 @@ pub struct Handle {
 }
 
 pub fn new(
-    server: &ServerHandle, blockchain: &Arc<Mutex<Blockchain>>
+    server: &ServerHandle, 
+    blockchain: &Arc<Mutex<Blockchain>>
 ) -> (Context, Handle) {
     let (signal_chan_sender, signal_chan_receiver) = unbounded();
 
@@ -145,6 +147,7 @@ impl Context {
                 let block = Block{header: header, content: content};
                 if Hashable::hash(&block) <= difficulty{
                     blockchain.insert(&block);
+                    self.server.broadcast(Message::NewBlockHashes(vec![Hashable::hash(&block)]));
                     break;
                 } 
             }

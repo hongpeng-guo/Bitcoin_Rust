@@ -65,6 +65,9 @@ fn main() {
     let (server_ctx, server) = server::new(p2p_addr, msg_tx).unwrap();
     server_ctx.start().unwrap();
 
+    // start a new blockchain
+    let blockchain = Arc::new(Mutex::new(blockchain::Blockchain::new()));
+
     // start the worker
     let p2p_workers = matches
         .value_of("p2p_workers")
@@ -78,11 +81,9 @@ fn main() {
         p2p_workers,
         msg_rx,
         &server,
+        &blockchain,
     );
     worker_ctx.start();
-
-    // start a new blockchain
-    let blockchain = Arc::new(Mutex::new(blockchain::Blockchain::new()));
 
     // start the miner
     let (miner_ctx, miner) = miner::new(

@@ -21,7 +21,7 @@ impl Blockchain {
         let mut rng = rand::thread_rng();
         let root_array:[u8; 32]=[rng.gen(); 32];
         let root_hash: H256 = root_array.into();
-        let mut genesis_block: Block = generate_random_block(&root_hash);
+        let genesis_block: Block = generate_random_block(&root_hash);
         let mut data_new = HashMap::new();
         data_new.insert(Hashable::hash(&genesis_block), BlockStruct{block_content: genesis_block.clone(), block_height: 0});
         Blockchain{data: data_new, tip_hash: Hashable::hash(&genesis_block), tip_height: 0}
@@ -31,7 +31,7 @@ impl Blockchain {
     pub fn insert(&mut self, block: &Block) {
         let this_height =(self.data[&block.header.parent]).block_height+1;
         self.data.insert(Hashable::hash(block), BlockStruct{block_content: (*block).clone(), block_height: this_height});
-        if(this_height > self.tip_height){
+        if this_height > self.tip_height {
             self.tip_height = self.tip_height+1;
             self.tip_hash =Hashable::hash(block);
         }

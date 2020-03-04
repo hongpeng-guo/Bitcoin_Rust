@@ -3,6 +3,8 @@ use super::peer;
 use crate::network::server::Handle as ServerHandle;
 use crossbeam::channel;
 use log::{debug, warn};
+use std::time;
+use std::time::SystemTime;
 
 use std::thread;
 use std::sync::{Arc, Mutex};
@@ -46,6 +48,7 @@ impl Context {
 
     fn worker_loop(&self) {
         let mut orphan_buffer: Vec<Block> = Vec::new();
+        let mut delay_list: Vec<u128> = Vec::new();
         loop {
             // println!("{}", self.blockchain.lock().unwrap().tip_hash);
             let msg = self.msg_chan.recv().unwrap();
@@ -97,7 +100,8 @@ impl Context {
                             if block.hash() <= block.header.difficulty && block.header.difficulty == blockchain.data[&block.header.parent].block_content.header.difficulty{
                                 blockchain.insert(&block);
                                 let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
-				println!("Block delay is {}", now-block.header.timestamp);
+				delay_list.push(now-block.header.timestamp);
+        			println!("Delays are {:?}", delay_list);
                             }
                             let mut new_block_list: Vec<Block> = Vec::new();
 	                    new_block_list.push(block.clone());
@@ -109,8 +113,9 @@ impl Context {
 	                                    if orphan_block.header.parent == new_block.hash() {
 	                                         blockchain.insert(&orphan_block);
                                                  let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
-				                 println!("Block delay is {}", now-block.header.timestamp);
-	                                         new_block_list_future.push(orphan_block);
+				                 delay_list.push(now-block.header.timestamp);
+	                                         println!("Delays are {:?}", delay_list);
+						 new_block_list_future.push(orphan_block);
                                                  orphan_buffer.remove(counter);
                                                  counter = counter - 1;
                                                  break;

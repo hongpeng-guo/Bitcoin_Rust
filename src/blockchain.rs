@@ -17,6 +17,8 @@ pub block_content: Block,
 block_height: u32,
 }
 
+
+
 impl Blockchain {
     /// Create a new blockchain, only containing the genesis block
     pub fn new() -> Self {

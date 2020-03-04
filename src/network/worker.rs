@@ -34,6 +34,7 @@ pub fn new(
     }
 }
 
+
 impl Context {
     pub fn start(self) {
         let num_worker = self.num_worker;
@@ -96,6 +97,7 @@ impl Context {
                     let mut inv_hashes = Vec::new();
                     for block in vec_blocks {
                         ////Zhijian's writing something here
+                        self.server.broadcast(Message::NewBlockHashes(block.hash());
                         if blockchain.data.contains_key(&block.header.parent){
                             if block.hash() <= block.header.difficulty && block.header.difficulty == blockchain.data[&block.header.parent].block_content.header.difficulty{
                                 blockchain.insert(&block);

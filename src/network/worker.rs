@@ -102,6 +102,8 @@ impl Context {
                                 let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
 				delay_list.push(now-block.header.timestamp);
         			println!("Delays are {:?}", delay_list);
+                                let block_serialized: Vec<u8> = bincode::serialize(&block).unwrap();
+        			println!("Block size is {}", block_serialized.len());
                             }
                             let mut new_block_list: Vec<Block> = Vec::new();
 	                    new_block_list.push(block.clone());
@@ -112,6 +114,8 @@ impl Context {
 	                                for new_block in new_block_list.clone(){
 	                                    if orphan_block.header.parent == new_block.hash() {
 	                                         blockchain.insert(&orphan_block);
+                                                 let block_serialized: Vec<u8> = bincode::serialize(&block).unwrap();
+        			                 println!("Block size is {}", block_serialized.len());
                                                  let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
 				                 delay_list.push(now-block.header.timestamp);
 	                                         println!("Delays are {:?}", delay_list);

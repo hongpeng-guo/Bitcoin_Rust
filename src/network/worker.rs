@@ -102,6 +102,9 @@ impl Context {
                     }
                     for block in vec_blocks {
                         ////Zhijian's writing something here
+                        if blockchain.data.contains_key(&block.hash()){
+                            continue;
+                        }
                         if blockchain.data.contains_key(&block.header.parent){
                             if block.hash() <= block.header.difficulty && block.header.difficulty == blockchain.data[&block.header.parent].block_content.header.difficulty{
                                 blockchain.insert(&block);

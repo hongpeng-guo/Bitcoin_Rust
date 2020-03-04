@@ -96,6 +96,8 @@ impl Context {
                         if blockchain.data.contains_key(&block.header.parent){
                             if block.hash() <= block.header.difficulty && block.header.difficulty == blockchain.data[&block.header.parent].block_content.header.difficulty{
                                 blockchain.insert(&block);
+                                let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
+				println!("Block delay is {}", now-block.header.timestamp);
                             }
                             let mut new_block_list: Vec<Block> = Vec::new();
 	                    new_block_list.push(block.clone());
@@ -106,6 +108,8 @@ impl Context {
 	                                for new_block in new_block_list.clone(){
 	                                    if orphan_block.header.parent == new_block.hash() {
 	                                         blockchain.insert(&orphan_block);
+                                                 let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
+				                 println!("Block delay is {}", now-block.header.timestamp);
 	                                         new_block_list_future.push(orphan_block);
                                                  orphan_buffer.remove(counter);
                                                  counter = counter - 1;

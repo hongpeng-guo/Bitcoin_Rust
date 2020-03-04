@@ -178,5 +178,6 @@ impl Context {
         }
         let blockchain = self.blockchain.lock().unwrap();
         println!("BlockChain Length is {}", blockchain.total_size);
+        println!("BlockChain height is {}", blockchain.tip_height);
     }
 }

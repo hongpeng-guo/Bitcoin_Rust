@@ -7,6 +7,7 @@ use log::{debug, warn};
 use std::thread;
 use std::sync::{Arc, Mutex};
 use crate::blockchain::Blockchain;
+use crate::block::Block;
 use crate::crypto::hash::Hashable;
 
 #[derive(Clone)]
@@ -44,6 +45,7 @@ impl Context {
     }
 
     fn worker_loop(&self) {
+        let mut orphan_buffer: Vec<Block> = Vec::new();
         loop {
             // println!("{}", self.blockchain.lock().unwrap().tip_hash);
             let msg = self.msg_chan.recv().unwrap();
@@ -90,7 +92,37 @@ impl Context {
                     let mut blockchain = self.blockchain.lock().unwrap();
                     let mut inv_hashes = Vec::new();
                     for block in vec_blocks {
-                        blockchain.insert(&block);
+                        ////Zhijian's writing something here
+                        if blockchain.data.contains_key(&block.header.parent){
+                            if block.hash() <= block.header.difficulty && block.header.difficulty == blockchain.data[&block.header.parent].block_content.header.difficulty{
+                                blockchain.insert(&block);
+                            }
+                            let mut new_block_list: Vec<Block> = Vec::new();
+	                    new_block_list.push(block.clone());
+                            while(!new_block_list.is_empty()){
+	                            let mut new_block_list_future: Vec<Block> = Vec::new();
+                                    let mut counter:usize = 0;
+	                            for orphan_block in orphan_buffer.clone(){
+	                                for new_block in new_block_list.clone(){
+	                                    if orphan_block.header.parent == new_block.hash() {
+	                                         blockchain.insert(&orphan_block);
+	                                         new_block_list_future.push(orphan_block);
+                                                 orphan_buffer.remove(counter);
+                                                 counter = counter - 1;
+                                                 break;
+	                                    }
+	                                }
+                                        counter = counter + 1;
+	                            }
+	                            new_block_list = new_block_list_future;
+                            }
+                        }
+                        else {
+                            orphan_buffer.push(block.clone());
+                        }
+
+                        ////////////
+                        
                         if blockchain.tip_hash == Hashable::hash(&block){
                             inv_hashes.push(blockchain.tip_hash);
                         }

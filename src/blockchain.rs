@@ -9,6 +9,7 @@ pub struct Blockchain {
 pub data: HashMap<H256, BlockStruct>,
 pub tip_hash: H256,
 pub tip_height: u32,
+pub total_size: u32,
 }
 
 pub struct BlockStruct {
@@ -31,7 +32,7 @@ impl Blockchain {
 
         let mut data_new = HashMap::new();
         data_new.insert(Hashable::hash(&genesis_block), BlockStruct{block_content: genesis_block.clone(), block_height: 0});
-        Blockchain{data: data_new, tip_hash: Hashable::hash(&genesis_block), tip_height: 0}
+        Blockchain{data: data_new, tip_hash: Hashable::hash(&genesis_block), tip_height: 0, total_size: 0}
     }
 
     /// Insert a block into blockchain
@@ -39,6 +40,7 @@ impl Blockchain {
         debug!("BCInsertOK: {}", self.data.contains_key(&block.header.parent));
         let this_height =(self.data[&block.header.parent]).block_height+1;
         self.data.insert(Hashable::hash(block), BlockStruct{block_content: (*block).clone(), block_height: this_height});
+        self.total_size = self.total_size + 1;
         if this_height > self.tip_height {
             self.tip_height = self.tip_height+1;
             self.tip_hash =Hashable::hash(block);

@@ -106,35 +106,36 @@ impl Context {
                             continue;
                         }
                         if blockchain.data.contains_key(&block.header.parent){
-                            if block.hash() <= block.header.difficulty && block.header.difficulty == blockchain.data[&block.header.parent].block_content.header.difficulty{
+                            if block.hash() <= block.header.difficulty && block.header.difficulty == 
+                                blockchain.data[&block.header.parent].block_content.header.difficulty{
                                 blockchain.insert(&block);
                                 let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
-				delay_list.push(now-block.header.timestamp);
-        			println!("Delays are {:?}", delay_list);
+				                delay_list.push(now-block.header.timestamp);
+        			            println!("Delays are {:?}", delay_list);
                                 let block_serialized: Vec<u8> = bincode::serialize(&block).unwrap();
-        			println!("Block size is {}", block_serialized.len());
+        			            println!("Block size is {}", block_serialized.len());
                             }
                             let mut new_block_list: Vec<Block> = Vec::new();
-	                    new_block_list.push(block.clone());
-                            while(!new_block_list.is_empty()){
+	                        new_block_list.push(block.clone());
+                            while !new_block_list.is_empty(){
 	                            let mut new_block_list_future: Vec<Block> = Vec::new();
-                                    let mut counter:usize = 0;
+                                let mut counter:usize = 0;
 	                            for orphan_block in orphan_buffer.clone(){
 	                                for new_block in new_block_list.clone(){
 	                                    if orphan_block.header.parent == new_block.hash() {
-	                                         blockchain.insert(&orphan_block);
-                                                 let block_serialized: Vec<u8> = bincode::serialize(&block).unwrap();
-        			                 println!("Block size is {}", block_serialized.len());
-                                                 let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
-				                 delay_list.push(now-block.header.timestamp);
-	                                         println!("Delays are {:?}", delay_list);
-						 new_block_list_future.push(orphan_block);
-                                                 orphan_buffer.remove(counter);
-                                                 counter = counter - 1;
-                                                 break;
+	                                        blockchain.insert(&orphan_block);
+                                            let block_serialized: Vec<u8> = bincode::serialize(&block).unwrap();
+        			                        println!("Block size is {}", block_serialized.len());
+                                            let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
+				                            delay_list.push(now-block.header.timestamp);
+	                                        println!("Delays are {:?}", delay_list);
+						                    new_block_list_future.push(orphan_block);
+                                            orphan_buffer.remove(counter);
+                                            counter = counter - 1;
+                                            break;
 	                                    }
 	                                }
-                                        counter = counter + 1;
+                                    counter = counter + 1;
 	                            }
 	                            new_block_list = new_block_list_future;
                             }
@@ -142,9 +143,7 @@ impl Context {
                         else {
                             orphan_buffer.push(block.clone());
                         }
-
                         ////////////
-                        
                         if blockchain.tip_hash == Hashable::hash(&block){
                             inv_hashes.push(blockchain.tip_hash);
                         }

@@ -130,7 +130,7 @@ impl Context {
             if let OperatingState::ShutDown = self.operating_state {
                 return;
             }
-
+            
             // TODO: actual mining
             let blockchain = self.blockchain.lock().unwrap();
             let parent = blockchain.tip();

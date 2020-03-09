@@ -16,7 +16,9 @@ We use Piazza for discussion.
 - [Part 1](MidtermProject1). Updated: ~~Due date 12:30PM, Feb 11, 2020.~~ Due date 12:30PM, Feb 13, 2020.
 - [Part 2](MidtermProject2). Due date 12:30PM, Feb 20, 2020.
 - [Part 3](MidtermProject3). Due date 12:30PM, Feb 27, 2020.
-- Part 4 and so on. Will be released soon.
+- [Part 4](MidtermProject4). Due date 12:30PM, Mar 5, 2020.
+- [Part 5](MidtermProject5). No submission required.
+- Part 6. Will be released soon.
 
 ## Policy
 Submissions later than due date will get 0 points.

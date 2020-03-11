@@ -3,7 +3,6 @@ use super::peer;
 use crate::network::server::Handle as ServerHandle;
 use crossbeam::channel;
 use log::{debug, warn};
-use std::time;
 use std::time::SystemTime;
 
 use std::thread;
@@ -110,7 +109,7 @@ impl Context {
                                 blockchain.data[&block.header.parent].block_content.header.difficulty{
                                 blockchain.insert(&block);
                                 let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
-				                delay_list.push(now-block.header.timestamp);
+				                delay_list.push(now - block.header.timestamp);
         			            println!("Delays are {:?}", delay_list);
                                 let block_serialized: Vec<u8> = bincode::serialize(&block).unwrap();
         			            println!("Block size is {}", block_serialized.len());

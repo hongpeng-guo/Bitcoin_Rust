@@ -100,7 +100,6 @@ impl Context {
                         self.server.broadcast(Message::NewBlockHashes(new_block_hashes.clone()));
                     }
                     for block in vec_blocks {
-                        ////Zhijian's writing something here
                         if blockchain.data.contains_key(&block.hash()){
                             continue;
                         }
@@ -142,7 +141,6 @@ impl Context {
                         else {
                             orphan_buffer.push(block.clone());
                         }
-                        ////////////
                         if blockchain.tip_hash == Hashable::hash(&block){
                             inv_hashes.push(blockchain.tip_hash);
                         }
@@ -151,6 +149,15 @@ impl Context {
                         self.server.broadcast(Message::NewBlockHashes(inv_hashes));
                     }
 
+                }
+                Message::NewTransactionHashes(vec_hashes) => {
+                    debug!("Blocks: {}", "place_holder");
+                }
+                Message::GetTransaction(vec_hashes) => {
+                    debug!("Blocks: {}", "place_holder");
+                }
+                Message::Transactions(vec_transactions) => {
+                    debug!("Blocks: {}", "place_holder");
                 }
             }
         }

@@ -68,6 +68,9 @@ fn main() {
     // start a new blockchain
     let blockchain = Arc::new(Mutex::new(blockchain::Blockchain::new()));
 
+    // start a new mempool
+    let mempool = Arc::new(Mutex::new(transaction::Mempool::new()));
+
     // start the worker
     let p2p_workers = matches
         .value_of("p2p_workers")
@@ -82,6 +85,7 @@ fn main() {
         msg_rx,
         &server,
         &blockchain,
+        &mempool,
     );
     worker_ctx.start();
 

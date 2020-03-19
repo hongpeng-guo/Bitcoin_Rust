@@ -107,6 +107,21 @@ impl PartialOrd for H256 {
     }
 }
 
+
+/// A H160 hash.
+#[derive(Eq, PartialEq, Serialize, Deserialize, Clone, Hash, Default, Copy, Debug)]
+pub struct H160([u8; 20]); // big endian u160
+
+
+impl std::convert::From<[u8; 32]> for H160 {
+    fn from(input: [u8; 32]) -> H160 {
+        let mut right = [0; 20];
+        right[..].clone_from_slice(& input[12 ..]);
+        H160(right)
+    }
+}
+
+
 #[cfg(any(test, test_utilities))]
 pub mod tests {
     use super::H256;

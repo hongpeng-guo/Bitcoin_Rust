@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
 use crate::blockchain::Blockchain;
 use crate::block::Block;
 use crate::crypto::hash::Hashable;
+use crate::transaction::{Transaction, SignedTransaction, Mempool};
 
 #[derive(Clone)]
 pub struct Context {
@@ -17,19 +18,22 @@ pub struct Context {
     num_worker: usize,
     server: ServerHandle,
     blockchain: Arc<Mutex<Blockchain>>,
+    mempool: Arc<Mutex<Mempool>>,
 }
 
 pub fn new(
     num_worker: usize,
     msg_src: channel::Receiver<(Vec<u8>, peer::Handle)>,
     server: &ServerHandle,
-    blockchain: &Arc<Mutex<Blockchain>>
+    blockchain: &Arc<Mutex<Blockchain>>,
+    mempool: &Arc<Mutex<Mempool>>
 ) -> Context {
     Context {
         msg_chan: msg_src,
         num_worker,
         server: server.clone(),
         blockchain: Arc::clone(blockchain),
+        mempool: Arc::clone(mempool)
     }
 }
 
@@ -151,13 +155,48 @@ impl Context {
 
                 }
                 Message::NewTransactionHashes(vec_hashes) => {
-                    debug!("Blocks: {}", "place_holder");
+                    debug!("NewTransactionHashes: {}", vec_hashes[0]);
+                    let mempool = self.mempool.lock().unwrap();
+                    let mut ret_hashes = Vec::new();
+                    for tx_hash in vec_hashes{
+                        if mempool.data.contains_key(&tx_hash){
+                            continue;
+                        }
+                        ret_hashes.push(tx_hash);
+                    }
+                    if ret_hashes.len() > 0 {
+                        peer.write(Message::GetTransaction(ret_hashes));
+                    }
                 }
                 Message::GetTransaction(vec_hashes) => {
-                    debug!("Blocks: {}", "place_holder");
+                    debug!("GetTransaction: {}", vec_hashes[0]);
+                    let mempool = self.mempool.lock().unwrap();
+                    let mut ret_txs = Vec::new();
+                    for tx_hash in vec_hashes{
+                        if mempool.data.contains_key(&tx_hash) == false{
+                            continue;
+                        }
+                        ret_txs.push(mempool.data.get(&tx_hash).unwrap().clone());
+                    }
+                    if ret_txs.len() > 0 {
+                        peer.write(Message::Transactions(ret_txs));
+                    }
                 }
-                Message::Transactions(vec_transactions) => {
-                    debug!("Blocks: {}", "place_holder");
+                Message::Transactions(vec_txs) => {
+                    debug!("Transactions: {}", "place_holder");
+                    let mut mempool = self.mempool.lock().unwrap();
+                    let mut inv_hashes = Vec::new();
+                    for tx in vec_txs {
+                        if mempool.data.contains_key(&tx.hash()){
+                            continue;
+                        }
+                        // TODO: check the transaction is valid
+                        inv_hashes.push(tx.hash());
+                        mempool.insert(tx);
+                    }
+                    if inv_hashes.len() > 0 {
+                        peer.write(Message::NewTransactionHashes(inv_hashes));
+                    }
                 }
             }
         }

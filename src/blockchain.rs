@@ -6,15 +6,15 @@ use log::debug;
 use crate::block::test::{generate_random_block, generate_static_block};
 
 pub struct Blockchain {
-pub data: HashMap<H256, BlockStruct>,
-pub tip_hash: H256,
-pub tip_height: u32,
-pub total_size: u32,
+    pub data: HashMap<H256, BlockStruct>,
+    pub tip_hash: H256,
+    pub tip_height: u32,
+    pub total_size: u32,
 }
 
 pub struct BlockStruct {
-pub block_content: Block,
-block_height: u32,
+    pub block_content: Block,
+    block_height: u32,
 }
 
 

@@ -12,7 +12,7 @@ use rand::{thread_rng, Rng};
 
 use crate::blockchain::Blockchain;
 use crate::block::{Block, Header, Content};
-use crate::transaction::Transaction;
+use crate::transaction::{Transaction, tests};
 use crate::crypto::merkle::MerkleTree;
 use crate::crypto::hash::Hashable;
 use crate::network::message::Message;
@@ -139,7 +139,7 @@ impl Context {
             std::mem::drop(blockchain);
 
             let mut default_transaction: Vec<Transaction> = Vec::new();
-            let t = Transaction{in_put: vec![0], out_put: vec![0]};
+            let t = tests::generate_random_transaction();
             default_transaction.push(t);
 
             let merkle_tree = MerkleTree::new(& default_transaction);

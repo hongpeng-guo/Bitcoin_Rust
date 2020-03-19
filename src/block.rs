@@ -2,7 +2,7 @@ use serde::{Serialize, Deserialize};
 use crate::crypto::hash::{H256, Hashable};
 extern crate rand;
 use rand::Rng;
-use crate::transaction::Transaction;
+use crate::transaction::{Transaction, tests};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Block {
@@ -18,8 +18,6 @@ pub difficulty: H256,
 pub timestamp: u128,
 pub merkle_root: H256,
 }
-
-
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Content {
@@ -53,7 +51,7 @@ pub mod test {
     pub fn generate_random_block(parent: &H256) -> Block {
         let mut rng = rand::thread_rng();
         let mut default_transaction: Vec<Transaction> = Vec::new();
-        let t = Transaction{in_put: vec![0], out_put: vec![0]};
+        let t = tests::generate_random_transaction();
         default_transaction.push(t);
         let mut difficulty_array:[u8; 32]=[0; 32];
         difficulty_array[2] = 64;
@@ -66,7 +64,7 @@ pub mod test {
 
     pub fn generate_static_block(parent: &H256) -> Block {
         let mut default_transaction: Vec<Transaction> = Vec::new();
-        let t = Transaction{in_put: vec![0], out_put: vec![0]};
+        let t = tests::generate_random_transaction();
         default_transaction.push(t);
         let mut difficulty_array:[u8; 32]=[0; 32];
         difficulty_array[2] = 128;

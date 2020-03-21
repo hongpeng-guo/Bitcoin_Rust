@@ -8,14 +8,10 @@ use std::time::SystemTime;
 
 use std::thread;
 use std::sync::{Arc, Mutex};
-use rand::{thread_rng, Rng};
 
-use crate::blockchain::Blockchain;
-use crate::block::{Block, Header, Content};
 use crate::transaction::{Transaction, SignedTransaction, Mempool,tests};
-use crate::crypto::merkle::MerkleTree;
-use crate::crypto::hash::Hashable;
 use crate::network::message::Message;
+use crate::crypto::hash::Hashable;
 
 
 enum ControlSignal {
@@ -34,7 +30,7 @@ pub struct Context {
     control_chan: Receiver<ControlSignal>,
     operating_state: OperatingState,
     server: ServerHandle,
-    blockchain: Arc<Mutex<Blockchain>>,
+    mempool: Arc<Mutex<Mempool>>,
 }
 
 #[derive(Clone)]
@@ -47,7 +43,7 @@ pub struct Handle {
 
 pub fn new(
     server: &ServerHandle, 
-    blockchain: &Arc<Mutex<Blockchain>>
+    mempool: &Arc<Mutex<Mempool>>
 ) -> (Context, Handle) {
     let (signal_chan_sender, signal_chan_receiver) = unbounded();
 
@@ -55,7 +51,7 @@ pub fn new(
         control_chan: signal_chan_receiver,
         operating_state: OperatingState::Paused,
         server: server.clone(),
-        blockchain: Arc::clone(blockchain),
+        mempool: Arc::clone(mempool),
     };
 
     let handle = Handle {
@@ -81,28 +77,28 @@ impl Handle {
 impl Context {
     pub fn start(mut self) {
         thread::Builder::new()
-            .name("miner".to_string())
+            .name("generator".to_string())
             .spawn(move || {
-                self.miner_loop();
+                self.generator_loop();
             })
             .unwrap();
-        info!("Miner initialized into paused mode");
+        info!("Generator initialized into paused mode");
     }
 
     fn handle_control_signal(&mut self, signal: ControlSignal) {
         match signal {
             ControlSignal::Exit => {
-                info!("Miner shutting down");
+                info!("Generator shutting down");
                 self.operating_state = OperatingState::ShutDown;
             }
             ControlSignal::Start(i) => {
-                info!("Miner starting in continuous mode with lambda {}", i);
+                info!("Generator starting in continuous mode with lambda {}", i);
                 self.operating_state = OperatingState::Run(i);
             }
         }
     }
 
-    fn miner_loop(&mut self) {
+    fn generator_loop(&mut self) {
         // main mining loop
 
         let loop_begin = SystemTime::now();
@@ -124,40 +120,19 @@ impl Context {
                         self.handle_control_signal(signal);
                     }
                     Err(TryRecvError::Empty) => {}
-                    Err(TryRecvError::Disconnected) => panic!("Miner control channel detached"),
+                    Err(TryRecvError::Disconnected) => panic!("Generator control channel detached"),
                 },
             }
             if let OperatingState::ShutDown = self.operating_state {
                 return;
             }
             
-            // TODO: actual mining
-            let blockchain = self.blockchain.lock().unwrap();
-            let parent = blockchain.tip();
-            let timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
-            let difficulty = blockchain.data.get(&parent).unwrap().block_content.header.difficulty;
-            std::mem::drop(blockchain);
-
-            let mut default_transaction: Vec<Transaction> = Vec::new();
-            let t = tests::generate_random_transaction();
-            default_transaction.push(t);
-
-            let merkle_tree = MerkleTree::new(& default_transaction);
-
-            let mut rng = thread_rng();
-            loop{
-                let nonce = rng.gen();
-                let header = Header{parent: parent, nonce: nonce, difficulty: difficulty, timestamp: timestamp, merkle_root: merkle_tree.root()};
-                let content = Content{content: default_transaction.clone()};
-                let block = Block{header: header, content: content};
-                if Hashable::hash(&block) <= difficulty{
-                    let mut blockchain = self.blockchain.lock().unwrap();
-                    blockchain.insert(&block);
-                    block_mined += 1;
-                    self.server.broadcast(Message::NewBlockHashes(vec![Hashable::hash(&block)]));
-                    break;
-                } 
-            }
+            // TODO: actual transaction generation
+            let mut mempool = self.mempool.lock().unwrap();
+            let t = tests::generate_random_signedtransaction();
+            mempool.insert(&t);
+            std::mem::drop(mempool);
+            self.server.broadcast(Message::NewTransactionHashes(vec![t.hash()]));
 
             if let OperatingState::Run(i) = self.operating_state {
                 if i != 0 {
@@ -167,19 +142,16 @@ impl Context {
             }
 
             let loop_duration = SystemTime::now().duration_since(loop_begin).unwrap().as_secs();
-            if loop_duration > 100{
-                println!("Blocks minded is {}", block_mined);
+            if loop_duration > 200{
+                println!("Generating transactions finished");
                 break;
             }
         }
 
         let mut loop_duration = SystemTime::now().duration_since(loop_begin).unwrap().as_secs();
-        while loop_duration < 110 {
+        while loop_duration < 210 {
             loop_duration = SystemTime::now().duration_since(loop_begin).unwrap().as_secs();
             continue;
         }
-        let blockchain = self.blockchain.lock().unwrap();
-        println!("BlockChain Length is {}", blockchain.total_size);
-        println!("BlockChain height is {}", blockchain.tip_height);
     }
 }

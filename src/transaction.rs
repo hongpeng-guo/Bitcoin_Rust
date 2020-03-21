@@ -65,8 +65,8 @@ impl Mempool{
         Mempool{data: data_new, total_size: 0}
     }
 
-    pub fn insert(&mut self, transaction: SignedTransaction) {
-        self.data.insert(Hashable::hash(&transaction), transaction);
+    pub fn insert(&mut self, transaction: &SignedTransaction) {
+        self.data.insert(Hashable::hash(transaction), transaction.clone());
         self.total_size += 1;
     }
 }
@@ -80,6 +80,14 @@ pub mod tests {
         let input: Vec<Input> = vec![Input{tx_hash: H256::from([0; 32]), index: 0, coin_base: false}];
         let output: Vec<Output> = vec![Output{address: H160::from([0; 32]), value: 50}];
         Transaction{in_put: input, out_put: output}
+    }
+
+    pub fn generate_random_signedtransaction() -> SignedTransaction{
+        let t = generate_random_transaction();
+        let key = key_pair::random();
+        let signature = sign(&t, &key).as_ref().to_vec();
+        let pub_key = key.public_key().as_ref().to_vec();
+        SignedTransaction{transaction: t, signature: signature, pub_key: pub_key}
     }
 
     #[test]

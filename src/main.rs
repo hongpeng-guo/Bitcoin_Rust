@@ -9,6 +9,7 @@ pub mod crypto;
 pub mod miner;
 pub mod network;
 pub mod transaction;
+pub mod generator;
 
 use clap::clap_app;
 use crossbeam::channel;
@@ -96,6 +97,13 @@ fn main() {
     );
     miner_ctx.start();
 
+    // start the generator
+    let (generator_ctx, generator) = generator::new(
+        &server,
+        &mempool,
+    );
+    generator_ctx.start();
+
     // connect to known peers
     if let Some(known_peers) = matches.values_of("known_peer") {
         let known_peers: Vec<String> = known_peers.map(|x| x.to_owned()).collect();
@@ -134,6 +142,7 @@ fn main() {
     ApiServer::start(
         api_addr,
         &miner,
+        &generator,
         &server,
     );
 

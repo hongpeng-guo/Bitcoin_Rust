@@ -192,7 +192,7 @@ impl Context {
                         }
                         // TODO: check the transaction is valid
                         inv_hashes.push(tx.hash());
-                        mempool.insert(tx);
+                        mempool.insert(&tx);
                     }
                     if inv_hashes.len() > 0 {
                         peer.write(Message::NewTransactionHashes(inv_hashes));

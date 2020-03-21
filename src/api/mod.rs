@@ -1,6 +1,7 @@
 use serde::Serialize;
 use crate::miner::Handle as MinerHandle;
 use crate::network::server::Handle as NetworkServerHandle;
+use crate::generator::Handle as GeneratorHandle;
 use crate::network::message::Message;
 
 use log::info;
@@ -14,6 +15,7 @@ use url::Url;
 pub struct Server {
     handle: HTTPServer,
     miner: MinerHandle,
+    generator: GeneratorHandle,
     network: NetworkServerHandle,
 }
 
@@ -40,17 +42,20 @@ impl Server {
     pub fn start(
         addr: std::net::SocketAddr,
         miner: &MinerHandle,
+        generator: &GeneratorHandle,
         network: &NetworkServerHandle,
     ) {
         let handle = HTTPServer::http(&addr).unwrap();
         let server = Self {
             handle,
             miner: miner.clone(),
+            generator: generator.clone(),
             network: network.clone(),
         };
         thread::spawn(move || {
             for req in server.handle.incoming_requests() {
                 let miner = server.miner.clone();
+                let generator = server.generator.clone();
                 let network = server.network.clone();
                 thread::spawn(move || {
                     // a valid url requires a base
@@ -85,6 +90,30 @@ impl Server {
                                 }
                             };
                             miner.start(lambda);
+                            respond_result!(req, true, "ok");
+                        }
+                        "/generator/start" => {
+                            let params = url.query_pairs();
+                            let params: HashMap<_, _> = params.into_owned().collect();
+                            let lambda = match params.get("lambda") {
+                                Some(v) => v,
+                                None => {
+                                    respond_result!(req, false, "missing lambda");
+                                    return;
+                                }
+                            };
+                            let lambda = match lambda.parse::<u64>() {
+                                Ok(v) => v,
+                                Err(e) => {
+                                    respond_result!(
+                                        req,
+                                        false,
+                                        format!("error parsing lambda: {}", e)
+                                    );
+                                    return;
+                                }
+                            };
+                            generator.start(lambda);
                             respond_result!(req, true, "ok");
                         }
                         "/network/ping" => {

@@ -14,7 +14,7 @@ pub struct MerkleTree {
 
 impl MerkleTree {
     pub fn new<T>(data: &[T]) -> Self where T: Hashable, {
-        let mut l_leaf_size = data.len();
+        let l_leaf_size = data.len();
         let mut l_height = 0;
         let mut l_all_entry: Vec<H256> = vec![<H256>::from([0;32]); l_leaf_size*l_leaf_size];
         let mut current_layer: Vec<H256>=Vec::new();
@@ -27,8 +27,8 @@ impl MerkleTree {
         let mut vec_2:[u8; 32]=[0; 32];
         let mut v_vec_1 = Vec::new();
         let mut v_vec_2 = Vec::new();
-        while(current_layer.len()>1){
-	        if(current_layer.len()%2!=0){
+        while current_layer.len()>1{
+	        if current_layer.len()%2!=0{
 	            current_layer.push(<H256>::from([0;32]));
 	        }
                 for i in 0..current_layer.len(){
@@ -42,7 +42,7 @@ impl MerkleTree {
                     v_vec_2 = vec_2.to_vec();
                     v_vec_1.extend(v_vec_2);
                     concatenated = v_vec_1;
-                    let mut c: &[u8] = &concatenated;
+                    let c: &[u8] = &concatenated;
 	            upper_layer.push(<H256>::from(ring::digest::digest(&ring::digest::SHA256, c)));
 	        }
 	        current_layer = upper_layer;
@@ -62,7 +62,7 @@ impl MerkleTree {
         let mut index_current: usize = index;
         for i in 0..self.height{
             let mut index_append: usize = 0;
-            if(index_current%2!=0){
+            if index_current%2!=0 {
                  index_append = index_current-1;
              }
              else{
@@ -78,16 +78,16 @@ impl MerkleTree {
 /// Verify that the datum hash with a vector of proofs will produce the Merkle root. Also need the
 /// index of datum and `leaf_size`, the total number of leaves.
 pub fn verify(root: &H256, datum: &H256, proof: &[H256], index: usize, leaf_size: usize) -> bool {
-    let mut length_proof = proof.len();
+    let length_proof = proof.len();
     let mut current_hash = *datum;
     for i in 0..length_proof{
-        let mut vec_1:[u8; 32]=current_hash.into();
-        let mut vec_2:[u8; 32]=proof[i].into();
+        let vec_1:[u8; 32]=current_hash.into();
+        let vec_2:[u8; 32]=proof[i].into();
         let mut v_vec_1:Vec<u8> = vec_1.to_vec();
-        let mut v_vec_2:Vec<u8> = vec_2.to_vec();
+        let v_vec_2:Vec<u8> = vec_2.to_vec();
         v_vec_1.extend(v_vec_2);
         let concatenated:Vec<u8>=v_vec_1;
-        let mut c: &[u8] = &concatenated;
+        let c: &[u8] = &concatenated;
 	current_hash = <H256>::from(ring::digest::digest(&ring::digest::SHA256, c));
    }
    current_hash==*root

@@ -61,7 +61,7 @@ pub struct Mempool {
 
 impl Mempool{
     pub fn new() -> Self {
-        let mut data_new = HashMap::new();
+        let data_new = HashMap::new();
         Mempool{data: data_new, total_size: 0}
     }
 

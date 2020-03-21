@@ -102,7 +102,6 @@ impl Context {
         // main mining loop
 
         let loop_begin = SystemTime::now();
-        let mut block_mined = 0;
 
         loop {
             // check and react to control signals

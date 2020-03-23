@@ -14,7 +14,7 @@ pub struct Input {
     // tx_hash is the hash value of previous transaction
     pub tx_hash:  H256,
     // index refers to a specific output number in pre tx
-    pub index:  u8,
+    pub index:  usize,
     // bool variable indicates if this tx is generated w block
     pub coin_base: bool,
 }
@@ -69,6 +69,43 @@ impl Mempool{
         self.data.insert(Hashable::hash(transaction), transaction.clone());
         self.total_size += 1;
     }
+}
+
+
+pub struct State {
+    pub data: HashMap<(H256, usize), (u64, H160)>,
+}
+
+impl State{
+    pub fn new() -> Self {
+        State{data: HashMap::new()}
+    }
+
+    pub fn update(&mut self, transactions: Vec<SignedTransaction>) {
+        for signed_tx in transactions{
+            // signature checks of the transaction
+            if verify(&signed_tx.transaction, signed_tx.clone().pub_key, signed_tx.clone().signature) == false{
+                continue;
+            }
+            // double spend checks of the transaction
+            if self.data.contains_key(&(signed_tx.transaction.in_put[0].tx_hash, signed_tx.transaction.in_put[0].index)) == false{
+                continue;
+            }
+            self.data.remove(&(signed_tx.transaction.in_put[0].tx_hash, signed_tx.transaction.in_put[0].index));
+            for (i, output) in signed_tx.transaction.out_put.iter().enumerate(){
+                self.data.insert((signed_tx.hash(), i),(output.value, output.address));
+            }
+        } 
+    }
+}
+
+
+pub fn ico3_proc(self_pubkey_vec: Vec<[u8; 32]>) -> State{
+    let mut ico_state = State::new();
+    ico_state.data.insert((H256::from([0; 32]), 0), (10000, H160::from(self_pubkey_vec[0])));
+    ico_state.data.insert((H256::from([0; 32]), 1), (10000, H160::from(self_pubkey_vec[1])));
+    ico_state.data.insert((H256::from([0; 32]), 2), (10000, H160::from(self_pubkey_vec[2])));
+    ico_state
 }
 
 // #[cfg(any(test, test_utilities))]

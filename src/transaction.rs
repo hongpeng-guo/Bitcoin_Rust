@@ -40,17 +40,17 @@ impl Hashable for SignedTransaction {
 
 
 /// Create digital signature of a transaction
-pub fn sign(t: &Transaction, key: &Ed25519KeyPair) -> Signature {
+pub fn sign(t: &Transaction, key: &Ed25519KeyPair) -> Vec<u8> {
     let t_serialized: Vec<u8> = bincode::serialize(&t).unwrap();
-    key.sign(&t_serialized)
+    key.sign(&t_serialized).as_ref().to_vec()
 }
 
 /// Verify digital signature of a transaction, using public key instead of secret key
-pub fn verify(t: &Transaction, public_key: &<Ed25519KeyPair as KeyPair>::PublicKey, signature: &Signature) -> bool {
+pub fn verify(t: &Transaction, public_key: Vec<u8>, signature: Vec<u8>) -> bool {
     let t_serialized: Vec<u8> = bincode::serialize(&t).unwrap();
-    let peer_public_key_bytes = public_key.as_ref();
+    let peer_public_key_bytes = &public_key[..];
     let peer_public_key = ring::signature::UnparsedPublicKey::new(&signature::ED25519, peer_public_key_bytes);
-    peer_public_key.verify(&t_serialized, signature.as_ref()).is_ok()
+    peer_public_key.verify(&t_serialized, &signature[..]).is_ok()
 }
 
 
@@ -85,7 +85,7 @@ pub mod tests {
     pub fn generate_random_signedtransaction() -> SignedTransaction{
         let t = generate_random_transaction();
         let key = key_pair::random();
-        let signature = sign(&t, &key).as_ref().to_vec();
+        let signature = sign(&t, &key);
         let pub_key = key.public_key().as_ref().to_vec();
         SignedTransaction{transaction: t, signature: signature, pub_key: pub_key}
     }
@@ -95,6 +95,6 @@ pub mod tests {
         let t = generate_random_transaction();
         let key = key_pair::random();
         let signature = sign(&t, &key);
-        assert!(verify(&t, &(key.public_key()), &signature));
+        assert!(verify(&t, key.public_key().as_ref().to_vec(), signature));
     }
 }

@@ -12,7 +12,7 @@ use rand::{thread_rng, Rng};
 
 use crate::blockchain::Blockchain;
 use crate::block::{Block, Header, Content};
-use crate::transaction::{Transaction, SignedTransaction, Mempool,tests};
+use crate::transaction::{Mempool, State, StateChain};
 use crate::crypto::merkle::MerkleTree;
 use crate::crypto::hash::Hashable;
 use crate::network::message::Message;
@@ -35,6 +35,8 @@ pub struct Context {
     operating_state: OperatingState,
     server: ServerHandle,
     blockchain: Arc<Mutex<Blockchain>>,
+    mempool: Arc<Mutex<Mempool>>,
+    statechain: Arc<Mutex<StateChain>>
 }
 
 #[derive(Clone)]
@@ -47,7 +49,9 @@ pub struct Handle {
 
 pub fn new(
     server: &ServerHandle, 
-    blockchain: &Arc<Mutex<Blockchain>>
+    blockchain: &Arc<Mutex<Blockchain>>,
+    mempool: &Arc<Mutex<Mempool>>,
+    statechain: &Arc<Mutex<StateChain>>
 ) -> (Context, Handle) {
     let (signal_chan_sender, signal_chan_receiver) = unbounded();
 
@@ -56,6 +60,8 @@ pub fn new(
         operating_state: OperatingState::Paused,
         server: server.clone(),
         blockchain: Arc::clone(blockchain),
+        mempool: Arc::clone(mempool),
+        statechain: Arc::clone(statechain),
     };
 
     let handle = Handle {
@@ -104,9 +110,10 @@ impl Context {
 
     fn miner_loop(&mut self) {
         // main mining loop
-
+        
         let loop_begin = SystemTime::now();
         let mut block_mined = 0;
+        let tx_block: usize = 20; 
 
         loop {
             // check and react to control signals
@@ -136,22 +143,40 @@ impl Context {
             let parent = blockchain.tip();
             let timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
             let difficulty = blockchain.data.get(&parent).unwrap().block_content.header.difficulty;
+            let mut state = State{ data: self.statechain.lock().unwrap().data.get(& blockchain.tip_hash).unwrap().clone()};
             std::mem::drop(blockchain);
 
-            let mut default_transaction: Vec<Transaction> = Vec::new();
-            let t = tests::generate_random_transaction();
-            default_transaction.push(t);
+            // Adding real transaction implementations
+            let mut mempool = self.mempool.lock().unwrap();
+            let tx_vec = mempool.retrieve_vec(tx_block);
+            // retrieve transactions until enough
+            if tx_vec.len() < tx_block {
+                continue;
+            }
 
-            let merkle_tree = MerkleTree::new(& default_transaction);
+
+            // state update and all the checks
+            let mut state_copy = state.clone();
+            let (accept_vec, abort_vec) = state_copy.update(tx_vec);
+
+            // cases when there are tx being aborted
+            if abort_vec.len() > 0{
+                mempool.insert_vec(abort_vec);
+            }
+            state.update(accept_vec.clone());
+            
+            let merkle_tree = MerkleTree::new(& accept_vec);
 
             let mut rng = thread_rng();
             loop{
                 let nonce = rng.gen();
                 let header = Header{parent: parent, nonce: nonce, difficulty: difficulty, timestamp: timestamp, merkle_root: merkle_tree.root()};
-                let content = Content{content: default_transaction.clone()};
+                let content = Content{content: accept_vec.clone()};
                 let block = Block{header: header, content: content};
                 if Hashable::hash(&block) <= difficulty{
                     let mut blockchain = self.blockchain.lock().unwrap();
+                    let mut statechain = self.statechain.lock().unwrap();
+                    statechain.insert(block.hash(), state);
                     blockchain.insert(&block);
                     block_mined += 1;
                     self.server.broadcast(Message::NewBlockHashes(vec![Hashable::hash(&block)]));

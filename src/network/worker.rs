@@ -7,10 +7,10 @@ use std::time::SystemTime;
 
 use std::thread;
 use std::sync::{Arc, Mutex};
+use crate::crypto::hash::{H256, H160, Hashable};
 use crate::blockchain::Blockchain;
 use crate::block::Block;
-use crate::crypto::hash::Hashable;
-use crate::transaction::{Transaction, SignedTransaction, Mempool};
+use crate::transaction::{self, Mempool, State, StateChain};
 
 #[derive(Clone)]
 pub struct Context {
@@ -19,6 +19,7 @@ pub struct Context {
     server: ServerHandle,
     blockchain: Arc<Mutex<Blockchain>>,
     mempool: Arc<Mutex<Mempool>>,
+    statechain: Arc<Mutex<StateChain>>,
 }
 
 pub fn new(
@@ -26,14 +27,16 @@ pub fn new(
     msg_src: channel::Receiver<(Vec<u8>, peer::Handle)>,
     server: &ServerHandle,
     blockchain: &Arc<Mutex<Blockchain>>,
-    mempool: &Arc<Mutex<Mempool>>
+    mempool: &Arc<Mutex<Mempool>>,
+    statechain: &Arc<Mutex<StateChain>>
 ) -> Context {
     Context {
         msg_chan: msg_src,
         num_worker,
         server: server.clone(),
         blockchain: Arc::clone(blockchain),
-        mempool: Arc::clone(mempool)
+        mempool: Arc::clone(mempool),
+        statechain: Arc::clone(statechain),
     }
 }
 
@@ -110,6 +113,12 @@ impl Context {
                         if blockchain.data.contains_key(&block.header.parent){
                             if block.hash() <= block.header.difficulty && block.header.difficulty == 
                                 blockchain.data[&block.header.parent].block_content.header.difficulty{
+                                // before insert new block, first update corresponding state and statechain
+                                let mut statechain = self.statechain.lock().unwrap();
+                                let mut parent_state = State{data: statechain.data.get(&block.header.parent).unwrap().clone()};
+                                parent_state.update(block.clone().content.content);
+                                statechain.insert(block.hash(), parent_state);
+                                // now insert the received block into the blockchain
                                 blockchain.insert(&block);
                                 let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
 				                delay_list.push(now - block.header.timestamp);
@@ -125,6 +134,12 @@ impl Context {
 	                            for orphan_block in orphan_buffer.clone(){
 	                                for new_block in new_block_list.clone(){
 	                                    if orphan_block.header.parent == new_block.hash() {
+                                            // before insert new block, first update corresponding state and statechain
+                                            let mut statechain = self.statechain.lock().unwrap();
+                                            let mut parent_state = State{data: statechain.data.get(&orphan_block.header.parent).unwrap().clone()};
+                                            parent_state.update(orphan_block.clone().content.content);
+                                            statechain.insert(orphan_block.hash(), parent_state);
+                                            // now insert the received block into the blockchain
 	                                        blockchain.insert(&orphan_block);
                                             let block_serialized: Vec<u8> = bincode::serialize(&block).unwrap();
         			                        println!("Block size is {}", block_serialized.len());
@@ -186,11 +201,27 @@ impl Context {
                     debug!("Transactions: {}", "place_holder");
                     let mut mempool = self.mempool.lock().unwrap();
                     let mut inv_hashes = Vec::new();
+                    let state = self.statechain.lock().unwrap().data.get(& self.blockchain.lock().unwrap().tip_hash).unwrap().clone();
                     for tx in vec_txs {
                         if mempool.data.contains_key(&tx.hash()){
                             continue;
                         }
-                        // TODO: check the transaction is valid
+                        // check if the transaction is signed correctly
+                        if transaction::verify(&tx.transaction, tx.clone().pub_key, 
+                            tx.clone().signature) == false{
+                            continue;
+                        }
+                        // check if double spend error may occur
+                        if state.contains_key(
+                            &(tx.transaction.in_put[0].tx_hash, tx.transaction.in_put[0].index)) == false{
+                            continue;
+                        }
+                        // check if the input of tx is the person who make the tx
+                        let (_value, addr) = state.get(
+                            &(tx.transaction.in_put[0].tx_hash, tx.transaction.in_put[0].index)).unwrap().clone();
+                        if ( addr == H160::from(H256::from(tx.pub_key.as_slice())) ) == false{
+                            continue;
+                        }
                         inv_hashes.push(tx.hash());
                         mempool.insert(&tx);
                     }

@@ -59,6 +59,14 @@ impl std::convert::From<&[u8; 32]> for H256 {
     }
 }
 
+impl std::convert::From<&[u8]> for H256 {
+    fn from(input: &[u8]) -> H256 {
+        let mut buffer: [u8; 32] = [0; 32];
+        buffer[..].copy_from_slice(&input[0..32]);
+        H256(buffer)
+    }
+}
+
 impl std::convert::From<&H256> for [u8; 32] {
     fn from(input: &H256) -> [u8; 32] {
         let mut buffer: [u8; 32] = [0; 32];
@@ -118,6 +126,14 @@ impl std::convert::From<[u8; 32]> for H160 {
         let mut right = [0; 20];
         right[..].clone_from_slice(& input[12 ..]);
         H160(right)
+    }
+}
+
+impl std::convert::From<H256> for H160 {
+    fn from(input: H256) -> H160 {
+        let mut buffer: [u8; 32] = [0; 32];
+        buffer[..].copy_from_slice(&input.0);
+        H160::from(buffer)
     }
 }
 

@@ -1,5 +1,5 @@
 use serde::{Serialize,Deserialize};
-use ring::signature::{self, Ed25519KeyPair, Signature, KeyPair};
+use ring::signature::{self, Ed25519KeyPair, KeyPair};
 use crate::crypto::hash::{H256, H160, Hashable};
 use std::collections::HashMap;
 
@@ -54,6 +54,7 @@ pub fn verify(t: &Transaction, public_key: Vec<u8>, signature: Vec<u8>) -> bool 
 }
 
 
+#[derive(Clone)]
 pub struct Mempool {
     pub data: HashMap<H256, SignedTransaction>,
     pub total_size: u32,
@@ -69,9 +70,28 @@ impl Mempool{
         self.data.insert(Hashable::hash(transaction), transaction.clone());
         self.total_size += 1;
     }
+
+    pub fn insert_vec(&mut self, transaction_vec: Vec<SignedTransaction>) {
+        for tx in transaction_vec{
+            self.insert(&tx);
+        }
+    }
+
+    pub fn retrieve_vec(&mut self, size: usize) -> Vec<SignedTransaction>{
+        let mut ret_vec: Vec<SignedTransaction> = Vec::new();
+        for (key, value) in self.data.clone().into_iter(){
+            ret_vec.push(value);
+            self.data.remove(&key);
+            if ret_vec.len() == size{
+                break;
+            }
+        }
+        ret_vec
+    }
 }
 
 
+#[derive(Clone)]
 pub struct State {
     pub data: HashMap<(H256, usize), (u64, H160)>,
 }
@@ -81,32 +101,62 @@ impl State{
         State{data: HashMap::new()}
     }
 
-    pub fn update(&mut self, transactions: Vec<SignedTransaction>) {
+    pub fn update(&mut self, transactions: Vec<SignedTransaction>) -> (Vec<SignedTransaction>, Vec<SignedTransaction>){
+        let mut accept_vec: Vec<SignedTransaction> = Vec::new();
+        let mut abort_vec: Vec<SignedTransaction> = Vec::new();
         for signed_tx in transactions{
             // signature checks of the transaction
             if verify(&signed_tx.transaction, signed_tx.clone().pub_key, signed_tx.clone().signature) == false{
+                abort_vec.push(signed_tx.clone());
                 continue;
             }
             // double spend checks of the transaction
             if self.data.contains_key(&(signed_tx.transaction.in_put[0].tx_hash, signed_tx.transaction.in_put[0].index)) == false{
+                abort_vec.push(signed_tx.clone());
                 continue;
             }
+            // check if the input of tx is the person who make the tx
+            let (_value, addr) = self.data.get(
+                &(signed_tx.transaction.in_put[0].tx_hash, signed_tx.transaction.in_put[0].index)).unwrap().clone();
+            if ( addr == H160::from(H256::from(signed_tx.pub_key.as_slice())) ) == false{
+                abort_vec.push(signed_tx.clone());
+                continue;
+            }
+            accept_vec.push(signed_tx.clone());
             self.data.remove(&(signed_tx.transaction.in_put[0].tx_hash, signed_tx.transaction.in_put[0].index));
             for (i, output) in signed_tx.transaction.out_put.iter().enumerate(){
                 self.data.insert((signed_tx.hash(), i),(output.value, output.address));
             }
         } 
+        (accept_vec, abort_vec)
     }
 }
 
 
-pub fn ico3_proc(self_pubkey_vec: Vec<[u8; 32]>) -> State{
+pub fn ico3_proc(pubkey_hashes: Vec<H256>) -> State{
     let mut ico_state = State::new();
-    ico_state.data.insert((H256::from([0; 32]), 0), (10000, H160::from(self_pubkey_vec[0])));
-    ico_state.data.insert((H256::from([0; 32]), 1), (10000, H160::from(self_pubkey_vec[1])));
-    ico_state.data.insert((H256::from([0; 32]), 2), (10000, H160::from(self_pubkey_vec[2])));
+    ico_state.data.insert((H256::from([0; 32]), 0), (10000, H160::from(pubkey_hashes[0])));
+    ico_state.data.insert((H256::from([0; 32]), 1), (10000, H160::from(pubkey_hashes[1])));
+    ico_state.data.insert((H256::from([0; 32]), 2), (10000, H160::from(pubkey_hashes[2])));
     ico_state
 }
+
+
+#[derive(Clone)]
+pub struct StateChain {
+    pub data: HashMap<H256,  HashMap<(H256, usize), (u64, H160)>>,
+}
+
+impl StateChain{
+    pub fn new() -> Self {
+        StateChain{data: HashMap::new()}
+    }
+
+    pub fn insert(&mut self, blockhash: H256, new_state: State) {
+        self.data.insert(blockhash, new_state.data);
+    }
+}
+
 
 // #[cfg(any(test, test_utilities))]
 pub mod tests {

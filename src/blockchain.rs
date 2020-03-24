@@ -1,9 +1,8 @@
 use crate::block::Block;
 use std::collections::HashMap;
 use crate::crypto::hash::{H256, Hashable};
-use rand::Rng;
 use log::debug;
-use crate::block::test::{generate_random_block, generate_static_block};
+use crate::block::test::generate_static_block;
 
 pub struct Blockchain {
     pub data: HashMap<H256, BlockStruct>,

@@ -16,11 +16,14 @@ use crossbeam::channel;
 use log::{error, info};
 use api::Server as ApiServer;
 use network::{server, worker};
+use crypto::key_pair;
 use std::net;
 use std::process;
 use std::thread;
 use std::time;
 use std::sync::{Arc, Mutex};
+use ring::{rand, signature::{Ed25519KeyPair, KeyPair}};
+use crate::crypto::hash::{H256, H160};
 
 fn main() {
     // parse command line arguments
@@ -66,11 +69,36 @@ fn main() {
     let (server_ctx, server) = server::new(p2p_addr, msg_tx).unwrap();
     server_ctx.start().unwrap();
 
-    // start a new blockchain
+    // start a new blockchain. Note that this chain contains genesis block
     let blockchain = Arc::new(Mutex::new(blockchain::Blockchain::new()));
 
     // start a new mempool
     let mempool = Arc::new(Mutex::new(transaction::Mempool::new()));
+
+    // preparing 3 worker settings
+    let mut initial_bytes: Vec<Vec<u8>> = Vec::new();
+    let mut initial_pubkey_hashes: Vec<H256> = Vec::new();
+    let mut initial_addresses: Vec<H160> = Vec::new();
+    for i in 0..3 {
+        let rng = rand::SystemRandom::new();
+        let pkcs8_bytes = Ed25519KeyPair::generate_pkcs8(&rng).unwrap();
+        let pkcs8_vec = pkcs8_bytes.as_ref().to_vec();
+        initial_bytes.push(pkcs8_vec);
+        let key_pair = Ed25519KeyPair::from_pkcs8(initial_bytes[i].as_slice().into()).unwrap();
+        initial_pubkey_hashes.push(H256::from(key_pair.public_key().as_ref()));
+        initial_addresses.push(H160::from(initial_pubkey_hashes[i]));
+    }
+
+    // Initial state ICO and start a new statechain
+    let statechain = Arc::new(Mutex::new(transaction::StateChain::new()));
+    statechain.lock().unwrap().insert(blockchain.lock().unwrap().tip_hash, transaction::ico3_proc(initial_pubkey_hashes.clone()));
+    
+    // Dispatching processes with corresponding keys
+    let self_keypair = if p2p_addr.port() % 1000 < initial_bytes.len() as u16{
+        Ed25519KeyPair::from_pkcs8(initial_bytes[(p2p_addr.port() % 1000) as usize].as_slice().into()).unwrap()
+    }else{
+        key_pair::random()
+    };
 
     // start the worker
     let p2p_workers = matches
@@ -87,6 +115,7 @@ fn main() {
         &server,
         &blockchain,
         &mempool,
+        &statechain,
     );
     worker_ctx.start();
 
@@ -94,13 +123,19 @@ fn main() {
     let (miner_ctx, miner) = miner::new(
         &server,
         &blockchain,
+        &mempool,
+        &statechain,
     );
     miner_ctx.start();
 
     // start the generator
     let (generator_ctx, generator) = generator::new(
         &server,
+        &blockchain,
         &mempool,
+        &statechain,
+        self_keypair,
+        initial_addresses
     );
     generator_ctx.start();
 

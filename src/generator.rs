@@ -9,9 +9,12 @@ use std::time::SystemTime;
 use std::thread;
 use std::sync::{Arc, Mutex};
 
-use crate::transaction::{Transaction, SignedTransaction, Mempool,tests};
+use crate::transaction::{self, Transaction, SignedTransaction, Mempool,Input, Output, StateChain, State};
+use ring::signature::{Ed25519KeyPair, KeyPair};
+use crate::crypto::hash::{H256, H160, Hashable};
+use crate::blockchain::Blockchain;
 use crate::network::message::Message;
-use crate::crypto::hash::Hashable;
+use rand::seq::SliceRandom; 
 
 
 enum ControlSignal {
@@ -30,7 +33,11 @@ pub struct Context {
     control_chan: Receiver<ControlSignal>,
     operating_state: OperatingState,
     server: ServerHandle,
+    blockchain: Arc<Mutex<Blockchain>>,
     mempool: Arc<Mutex<Mempool>>,
+    statechain: Arc<Mutex<StateChain>>,
+    keypair: Ed25519KeyPair,
+    addresses: Vec<H160>,
 }
 
 #[derive(Clone)]
@@ -43,7 +50,11 @@ pub struct Handle {
 
 pub fn new(
     server: &ServerHandle, 
-    mempool: &Arc<Mutex<Mempool>>
+    blockchain: &Arc<Mutex<Blockchain>>,
+    mempool: &Arc<Mutex<Mempool>>,
+    statechain: &Arc<Mutex<StateChain>>,
+    keypair: Ed25519KeyPair,
+    addresses: Vec<H160>
 ) -> (Context, Handle) {
     let (signal_chan_sender, signal_chan_receiver) = unbounded();
 
@@ -51,7 +62,11 @@ pub fn new(
         control_chan: signal_chan_receiver,
         operating_state: OperatingState::Paused,
         server: server.clone(),
+        blockchain: blockchain.clone(),
         mempool: Arc::clone(mempool),
+        statechain: Arc::clone(statechain),
+        keypair: keypair,
+        addresses: addresses,
     };
 
     let handle = Handle {
@@ -100,8 +115,13 @@ impl Context {
 
     fn generator_loop(&mut self) {
         // main mining loop
-
         let loop_begin = SystemTime::now();
+
+        // Define self address and addresses of other peers in the network
+        let self_address = H160::from(H256::from(self.keypair.public_key().as_ref()));
+        let index = self.addresses.iter().position(|x| *x == self_address).unwrap();
+        let mut other_address = self.addresses.clone();
+        other_address.remove(index);
 
         loop {
             // check and react to control signals
@@ -126,12 +146,32 @@ impl Context {
                 return;
             }
             
+
+            // generate several transaction over time
+            let current_state = State{data: self.statechain.lock().unwrap().data.get(&self.blockchain.lock().unwrap().tip_hash).unwrap().clone()};
+            let mut self_coins: Vec<(H256, usize, u64)> = Vec::new();
+            for (k, v) in current_state.data{
+                if v.1 != self_address{
+                    continue;
+                }
+                self_coins.push((k.0, k.1, v.0));
+            }
+            // select a random address to send a random coin without more value than the coin
+            let recipient = other_address.choose(&mut rand::thread_rng()).unwrap().clone();
+            let input_coin = self_coins.choose(&mut rand::thread_rng()).unwrap().clone();
+            let input: Vec<Input> = vec![Input{tx_hash: input_coin.0, index: input_coin.1, coin_base: false}];
+            let output: Vec<Output> = vec![Output{address: recipient, value: input_coin.2 /2}, 
+                            Output{address: self_address, value: input_coin.2 - input_coin.2 /2}];
+            let t = Transaction{in_put: input, out_put: output};
+            let signed_t = SignedTransaction{transaction: t.clone(), signature: transaction::sign(&t, &self.keypair),
+                                                            pub_key: self.keypair.public_key().as_ref().to_vec()};
+            
             // TODO: actual transaction generation
+
             let mut mempool = self.mempool.lock().unwrap();
-            let t = tests::generate_random_signedtransaction();
-            mempool.insert(&t);
+            mempool.insert(&signed_t);
             std::mem::drop(mempool);
-            self.server.broadcast(Message::NewTransactionHashes(vec![t.hash()]));
+            self.server.broadcast(Message::NewTransactionHashes(vec![signed_t.hash()]));
 
             if let OperatingState::Run(i) = self.operating_state {
                 if i != 0 {

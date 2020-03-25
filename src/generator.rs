@@ -145,6 +145,12 @@ impl Context {
             if let OperatingState::ShutDown = self.operating_state {
                 return;
             }
+
+            let loop_duration = SystemTime::now().duration_since(loop_begin).unwrap().as_secs();
+            if loop_duration > 50{
+                println!("Generating transactions finished");
+                break;
+            }
             
 
             // generate several transaction over time
@@ -180,18 +186,6 @@ impl Context {
                     thread::sleep(interval);
                 }
             }
-
-            let loop_duration = SystemTime::now().duration_since(loop_begin).unwrap().as_secs();
-            if loop_duration > 50{
-                println!("Generating transactions finished");
-                break;
-            }
-        }
-
-        let mut loop_duration = SystemTime::now().duration_since(loop_begin).unwrap().as_secs();
-        while loop_duration < 60 {
-            loop_duration = SystemTime::now().duration_since(loop_begin).unwrap().as_secs();
-            continue;
         }
     }
 }

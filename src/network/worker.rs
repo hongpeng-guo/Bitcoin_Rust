@@ -170,63 +170,67 @@ impl Context {
 
                 }
                 Message::NewTransactionHashes(vec_hashes) => {
-                    debug!("NewTransactionHashes: {}", vec_hashes[0]);
                     let mempool = self.mempool.lock().unwrap();
                     let mut ret_hashes = Vec::new();
-                    for tx_hash in vec_hashes{
+                    for tx_hash in vec_hashes.clone(){
                         if mempool.data.contains_key(&tx_hash){
                             continue;
                         }
                         ret_hashes.push(tx_hash);
                     }
                     if ret_hashes.len() > 0 {
+                        debug!("NewTransactionHashes: {}, Mempool Size {}", vec_hashes.clone()[0], mempool.total_size);
                         peer.write(Message::GetTransaction(ret_hashes));
                     }
                 }
                 Message::GetTransaction(vec_hashes) => {
-                    debug!("GetTransaction: {}", vec_hashes[0]);
                     let mempool = self.mempool.lock().unwrap();
                     let mut ret_txs = Vec::new();
-                    for tx_hash in vec_hashes{
+                    for tx_hash in vec_hashes.clone(){
                         if mempool.data.contains_key(&tx_hash) == false{
                             continue;
                         }
                         ret_txs.push(mempool.data.get(&tx_hash).unwrap().clone());
                     }
                     if ret_txs.len() > 0 {
+                        debug!("GetTransaction: {}, Mempool Size {}", vec_hashes.clone()[0], mempool.total_size);
                         peer.write(Message::Transactions(ret_txs));
                     }
                 }
                 Message::Transactions(vec_txs) => {
                     debug!("Transactions: {}", "place_holder");
-                    let mut mempool = self.mempool.lock().unwrap();
                     let mut inv_hashes = Vec::new();
                     let state = self.statechain.lock().unwrap().data.get(& self.blockchain.lock().unwrap().tip_hash).unwrap().clone();
                     for tx in vec_txs {
+                        let mut mempool = self.mempool.lock().unwrap();
                         if mempool.data.contains_key(&tx.hash()){
                             continue;
                         }
                         // check if the transaction is signed correctly
                         if transaction::verify(&tx.transaction, tx.clone().pub_key, 
                             tx.clone().signature) == false{
+                            println!("Transaction sign verification failed");
                             continue;
                         }
                         // check if double spend error may occur
                         if state.contains_key(
                             &(tx.transaction.in_put[0].tx_hash, tx.transaction.in_put[0].index)) == false{
+                            println!("Double spend checking failed");
                             continue;
                         }
                         // check if the input of tx is the person who make the tx
                         let (_value, addr) = state.get(
                             &(tx.transaction.in_put[0].tx_hash, tx.transaction.in_put[0].index)).unwrap().clone();
-                        if ( addr == H160::from(H256::from(tx.pub_key.as_slice())) ) == false{
+                        if ( addr == H160::from(H256::from(&tx.pub_key[..])) ) == false{
+                            println!("Same sender input owner check failed");
                             continue;
                         }
                         inv_hashes.push(tx.hash());
                         mempool.insert(&tx);
                     }
                     if inv_hashes.len() > 0 {
-                        peer.write(Message::NewTransactionHashes(inv_hashes));
+                        self.server.broadcast(Message::NewTransactionHashes(inv_hashes));
+                        debug!("After include new TX, Mempool size is {}", self.mempool.lock().unwrap().total_size);
                     }
                 }
             }

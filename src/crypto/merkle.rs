@@ -12,6 +12,7 @@ pub struct MerkleTree {
         all_entry: Vec<H256>,
 }
 
+#[allow(unused_assignments)]
 impl MerkleTree {
     pub fn new<T>(data: &[T]) -> Self where T: Hashable, {
         let l_leaf_size = data.len();
@@ -77,7 +78,8 @@ impl MerkleTree {
 
 /// Verify that the datum hash with a vector of proofs will produce the Merkle root. Also need the
 /// index of datum and `leaf_size`, the total number of leaves.
-pub fn verify(root: &H256, datum: &H256, proof: &[H256], index: usize, leaf_size: usize) -> bool {
+/// pub fn verify(root: &H256, datum: &H256, proof: &[H256], index: usize, leaf_size: usize) -> bool {
+pub fn verify(root: &H256, datum: &H256, proof: &[H256]) -> bool {
     let length_proof = proof.len();
     let mut current_hash = *datum;
     for i in 0..length_proof{
@@ -142,6 +144,6 @@ mod tests {
         let input_data: Vec<H256> = gen_merkle_tree_data!();
         let merkle_tree = MerkleTree::new(&input_data);
         let proof = merkle_tree.proof(0);
-        assert!(verify(&merkle_tree.root(), &input_data[0].hash(), &proof, 0, input_data.len()));
+        assert!(verify(&merkle_tree.root(), &input_data[0].hash(), &proof));
     }
 }

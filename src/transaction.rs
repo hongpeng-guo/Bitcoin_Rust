@@ -67,6 +67,9 @@ impl Mempool{
     }
 
     pub fn insert(&mut self, transaction: &SignedTransaction) {
+        if self.data.contains_key(&Hashable::hash(transaction)){
+            return;
+        }
         self.data.insert(Hashable::hash(transaction), transaction.clone());
         self.total_size += 1;
     }

@@ -137,6 +137,24 @@ impl std::convert::From<H256> for H160 {
     }
 }
 
+impl std::fmt::Display for H160 {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let start = if let Some(precision) = f.precision() {
+            if precision >= 40 {
+                0
+            } else {
+                20 - precision / 2
+            }
+        } else {
+            0
+        };
+        for byte_idx in start..20 {
+            write!(f, "{:>02x}", &self.0[byte_idx])?;
+        }
+        Ok(())
+    }
+}
+
 
 #[cfg(any(test, test_utilities))]
 pub mod tests {

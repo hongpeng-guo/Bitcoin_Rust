@@ -21,9 +21,12 @@ use std::net;
 use std::process;
 use std::thread;
 use std::time;
+use std::path::Path;
+use std::io::prelude::*;
+use std::fs::File;
 use std::sync::{Arc, Mutex};
-use ring::{rand, signature::{Ed25519KeyPair, KeyPair}};
-use crate::crypto::hash::{H256, H160};
+use ring::{signature::{Ed25519KeyPair, KeyPair}};
+use crate::crypto::{write_keys, hash::{H256, H160}};
 
 fn main() {
     // parse command line arguments
@@ -76,13 +79,18 @@ fn main() {
     let mempool = Arc::new(Mutex::new(transaction::Mempool::new()));
 
     // preparing 3 worker settings
+    if Path::new("/home/hongpeng/Desktop/Spring20/ECE598/bitcoin_midterm/src/keys/1.key").exists() == false{
+        println!("=========");
+        write_keys::write_key();
+    }
     let mut initial_bytes: Vec<Vec<u8>> = Vec::new();
     let mut initial_pubkey_hashes: Vec<H256> = Vec::new();
     let mut initial_addresses: Vec<H160> = Vec::new();
     for i in 0..3 {
-        let rng = rand::SystemRandom::new();
-        let pkcs8_bytes = Ed25519KeyPair::generate_pkcs8(&rng).unwrap();
-        let pkcs8_vec = pkcs8_bytes.as_ref().to_vec();
+        let path = format!("/home/hongpeng/Desktop/Spring20/ECE598/bitcoin_midterm/src/keys/{}.key", i);
+        let mut f = File::open(path).unwrap();
+        let mut pkcs8_vec = Vec::new();
+        f.read_to_end(&mut pkcs8_vec).unwrap();
         initial_bytes.push(pkcs8_vec);
         let key_pair = Ed25519KeyPair::from_pkcs8(initial_bytes[i].as_slice().into()).unwrap();
         initial_pubkey_hashes.push(H256::from(key_pair.public_key().as_ref()));

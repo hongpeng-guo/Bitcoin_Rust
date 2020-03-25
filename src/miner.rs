@@ -113,7 +113,7 @@ impl Context {
         
         let loop_begin = SystemTime::now();
         let mut block_mined = 0;
-        let tx_block: usize = 20; 
+        let tx_block: usize = 10; 
 
         loop {
             // check and react to control signals
@@ -138,6 +138,12 @@ impl Context {
                 return;
             }
             
+            let loop_duration = SystemTime::now().duration_since(loop_begin).unwrap().as_secs();
+            if loop_duration > 100{
+                println!("Blocks minded is {}", block_mined);
+                break;
+            }
+
             // TODO: actual mining
             let blockchain = self.blockchain.lock().unwrap();
             let parent = blockchain.tip();
@@ -150,10 +156,9 @@ impl Context {
             let mut mempool = self.mempool.lock().unwrap();
             let tx_vec = mempool.retrieve_vec(tx_block);
             // retrieve transactions until enough
-            if tx_vec.len() < tx_block {
+            if tx_vec.len() == 0 {
                 continue;
             }
-
 
             // state update and all the checks
             let mut state_copy = state.clone();
@@ -162,6 +167,9 @@ impl Context {
             // cases when there are tx being aborted
             if abort_vec.len() > 0{
                 mempool.insert_vec(abort_vec);
+            }
+            if accept_vec.len() == 0{
+                continue;
             }
             state.update(accept_vec.clone());
             
@@ -189,12 +197,6 @@ impl Context {
                     let interval = time::Duration::from_micros(i as u64);
                     thread::sleep(interval);
                 }
-            }
-
-            let loop_duration = SystemTime::now().duration_since(loop_begin).unwrap().as_secs();
-            if loop_duration > 100{
-                println!("Blocks minded is {}", block_mined);
-                break;
             }
         }
 

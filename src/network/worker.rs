@@ -200,10 +200,13 @@ impl Context {
                 Message::Transactions(vec_txs) => {
                     debug!("Transactions: {}", "place_holder");
                     let mut inv_hashes = Vec::new();
-                    let state = self.statechain.lock().unwrap().data.get(& self.blockchain.lock().unwrap().tip_hash).unwrap().clone();
+                    let mut inv_tx = Vec::new();
+
+                    let current_tip_hash = self.blockchain.lock().unwrap().tip_hash;
+                    let state = self.statechain.lock().unwrap().data.get(& current_tip_hash).unwrap().clone();
+
                     for tx in vec_txs {
-                        let mut mempool = self.mempool.lock().unwrap();
-                        if mempool.data.contains_key(&tx.hash()){
+                        if self.mempool.lock().unwrap().data.contains_key(&tx.hash()){
                             continue;
                         }
                         // check if the transaction is signed correctly
@@ -226,9 +229,10 @@ impl Context {
                             continue;
                         }
                         inv_hashes.push(tx.hash());
-                        mempool.insert(&tx);
+                        inv_tx.push(tx.clone());
                     }
                     if inv_hashes.len() > 0 {
+                        self.mempool.lock().unwrap().insert_vec(inv_tx);
                         self.server.broadcast(Message::NewTransactionHashes(inv_hashes));
                         debug!("After include new TX, Mempool size is {}", self.mempool.lock().unwrap().total_size);
                     }

@@ -148,7 +148,8 @@ impl Context {
             
 
             // generate several transaction over time
-            let current_state = State{data: self.statechain.lock().unwrap().data.get(&self.blockchain.lock().unwrap().tip_hash).unwrap().clone()};
+            let current_tip_hash = self.blockchain.lock().unwrap().tip_hash;
+            let current_state = State{data: self.statechain.lock().unwrap().data.get(&current_tip_hash).unwrap().clone()};
             let mut self_coins: Vec<(H256, usize, u64)> = Vec::new();
             for (k, v) in current_state.data{
                 if v.1 != self_address{

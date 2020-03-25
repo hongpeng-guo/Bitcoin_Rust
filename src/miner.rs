@@ -140,17 +140,20 @@ impl Context {
             
             let loop_duration = SystemTime::now().duration_since(loop_begin).unwrap().as_secs();
             if loop_duration > 100{
-                println!("Blocks minded is {}", block_mined);
+                info!("Blocks minded is {}", block_mined);
                 break;
             }
 
             // TODO: actual mining
+
             let blockchain = self.blockchain.lock().unwrap();
             let parent = blockchain.tip();
             let timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
             let difficulty = blockchain.data.get(&parent).unwrap().block_content.header.difficulty;
-            let mut state = State{ data: self.statechain.lock().unwrap().data.get(& blockchain.tip_hash).unwrap().clone()};
+
+            let current_tip_hash = blockchain.tip_hash;
             std::mem::drop(blockchain);
+            let mut state = State{ data: self.statechain.lock().unwrap().data.get(& current_tip_hash).unwrap().clone()};
 
             // Adding real transaction implementations
             let mut mempool = self.mempool.lock().unwrap();
@@ -162,16 +165,17 @@ impl Context {
 
             // state update and all the checks
             let mut state_copy = state.clone();
-            let (accept_vec, abort_vec) = state_copy.update(tx_vec);
+            let (accept_vec, _abort_vec) = state_copy.update(tx_vec);
 
             // cases when there are tx being aborted
-            if abort_vec.len() > 0{
-                mempool.insert_vec(abort_vec);
-            }
+            // if _abort_vec.len() > 0{
+            //     mempool.insert_vec(_abort_vec);
+            // }
             if accept_vec.len() == 0{
                 continue;
             }
             state.update(accept_vec.clone());
+            std::mem::drop(mempool);
             
             let merkle_tree = MerkleTree::new(& accept_vec);
 
@@ -206,7 +210,7 @@ impl Context {
             continue;
         }
         let blockchain = self.blockchain.lock().unwrap();
-        println!("BlockChain Length is {}", blockchain.total_size);
-        println!("BlockChain height is {}", blockchain.tip_height);
+        info!("BlockChain Length is {}", blockchain.total_size);
+        info!("BlockChain height is {}", blockchain.tip_height);
     }
 }

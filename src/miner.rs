@@ -225,5 +225,6 @@ impl Context {
         let blockchain = self.blockchain.lock().unwrap();
         info!("BlockChain Length is {}", blockchain.total_size);
         info!("BlockChain height is {}", blockchain.tip_height);
+        info!("BlockChain tip hash is {}", blockchain.tip_hash);
     }
 }

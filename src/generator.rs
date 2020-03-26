@@ -176,8 +176,13 @@ impl Context {
             // TODO: actual transaction generation
 
             let mut mempool = self.mempool.lock().unwrap();
-            mempool.insert(&signed_t);
+            let _insert_success = mempool.insert(&signed_t);
             std::mem::drop(mempool);
+            if _insert_success == false{
+                continue;
+            }
+            info!("{} sends {} value to {}", self_address,
+                signed_t.transaction.out_put[0].value, signed_t.transaction.out_put[0].address);
             self.server.broadcast(Message::NewTransactionHashes(vec![signed_t.hash()]));
 
             if let OperatingState::Run(i) = self.operating_state {

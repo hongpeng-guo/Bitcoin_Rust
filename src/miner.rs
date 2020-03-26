@@ -14,7 +14,7 @@ use crate::blockchain::Blockchain;
 use crate::block::{Block, Header, Content};
 use crate::transaction::{Mempool, State, StateChain};
 use crate::crypto::merkle::MerkleTree;
-use crate::crypto::hash::Hashable;
+use crate::crypto::hash::{Hashable, H256, H160};
 use crate::network::message::Message;
 
 
@@ -36,7 +36,8 @@ pub struct Context {
     server: ServerHandle,
     blockchain: Arc<Mutex<Blockchain>>,
     mempool: Arc<Mutex<Mempool>>,
-    statechain: Arc<Mutex<StateChain>>
+    statechain: Arc<Mutex<StateChain>>,
+    self_address: H160
 }
 
 #[derive(Clone)]
@@ -51,7 +52,8 @@ pub fn new(
     server: &ServerHandle, 
     blockchain: &Arc<Mutex<Blockchain>>,
     mempool: &Arc<Mutex<Mempool>>,
-    statechain: &Arc<Mutex<StateChain>>
+    statechain: &Arc<Mutex<StateChain>>,
+    self_address: H160
 ) -> (Context, Handle) {
     let (signal_chan_sender, signal_chan_receiver) = unbounded();
 
@@ -62,6 +64,7 @@ pub fn new(
         blockchain: Arc::clone(blockchain),
         mempool: Arc::clone(mempool),
         statechain: Arc::clone(statechain),
+        self_address: self_address,
     };
 
     let handle = Handle {
@@ -139,7 +142,7 @@ impl Context {
             }
             
             let loop_duration = SystemTime::now().duration_since(loop_begin).unwrap().as_secs();
-            if loop_duration > 100{
+            if loop_duration > 80{
                 info!("Blocks minded is {}", block_mined);
                 break;
             }
@@ -190,6 +193,16 @@ impl Context {
                     let mut statechain = self.statechain.lock().unwrap();
                     statechain.insert(block.hash(), state);
                     blockchain.insert(&block);
+                    // log info for receiving transaction value  
+                    for signed_tx in block.clone().content.content{
+                        for output in signed_tx.transaction.out_put{
+                            if output.address != self.self_address{
+                                continue;
+                            }
+                            info!("{} receives {} value from {}", self.self_address,
+                                output.value, H160::from(H256::from(&signed_tx.pub_key[..])));
+                        }
+                    }
                     block_mined += 1;
                     self.server.broadcast(Message::NewBlockHashes(vec![Hashable::hash(&block)]));
                     break;
@@ -205,7 +218,7 @@ impl Context {
         }
 
         let mut loop_duration = SystemTime::now().duration_since(loop_begin).unwrap().as_secs();
-        while loop_duration < 110 {
+        while loop_duration < 90 {
             loop_duration = SystemTime::now().duration_since(loop_begin).unwrap().as_secs();
             continue;
         }

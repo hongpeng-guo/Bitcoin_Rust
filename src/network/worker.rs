@@ -2,7 +2,7 @@ use super::message::Message;
 use super::peer;
 use crate::network::server::Handle as ServerHandle;
 use crossbeam::channel;
-use log::{debug, warn};
+use log::{debug, warn, info};
 use std::time::SystemTime;
 
 use std::thread;
@@ -20,6 +20,7 @@ pub struct Context {
     blockchain: Arc<Mutex<Blockchain>>,
     mempool: Arc<Mutex<Mempool>>,
     statechain: Arc<Mutex<StateChain>>,
+    self_address: H160,
 }
 
 pub fn new(
@@ -28,7 +29,8 @@ pub fn new(
     server: &ServerHandle,
     blockchain: &Arc<Mutex<Blockchain>>,
     mempool: &Arc<Mutex<Mempool>>,
-    statechain: &Arc<Mutex<StateChain>>
+    statechain: &Arc<Mutex<StateChain>>,
+    self_address: H160
 ) -> Context {
     Context {
         msg_chan: msg_src,
@@ -37,6 +39,7 @@ pub fn new(
         blockchain: Arc::clone(blockchain),
         mempool: Arc::clone(mempool),
         statechain: Arc::clone(statechain),
+        self_address: self_address,
     }
 }
 
@@ -118,6 +121,16 @@ impl Context {
                                 let mut parent_state = State{data: statechain.data.get(&block.header.parent).unwrap().clone()};
                                 parent_state.update(block.clone().content.content);
                                 statechain.insert(block.hash(), parent_state);
+                                // log info for receiving transaction value  
+                                for signed_tx in block.clone().content.content{
+                                    for output in signed_tx.transaction.out_put{
+                                        if output.address != self.self_address{
+                                            continue;
+                                        }
+                                        info!("{} receives {} value from {}", self.self_address,
+                                            output.value, H160::from(H256::from(&signed_tx.pub_key[..])));
+                                    }
+                                }
                                 // now insert the received block into the blockchain
                                 blockchain.insert(&block);
                                 let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
@@ -139,6 +152,16 @@ impl Context {
                                             let mut parent_state = State{data: statechain.data.get(&orphan_block.header.parent).unwrap().clone()};
                                             parent_state.update(orphan_block.clone().content.content);
                                             statechain.insert(orphan_block.hash(), parent_state);
+                                            // log info for receiving transaction value  
+                                            for signed_tx in block.clone().content.content{
+                                                for output in signed_tx.transaction.out_put{
+                                                    if output.address != self.self_address{
+                                                        continue;
+                                                    }
+                                                    info!("{} receives {} value from {}", self.self_address,
+                                                        output.value, H160::from(H256::from(&signed_tx.pub_key[..])));
+                                                }
+                                            }
                                             // now insert the received block into the blockchain
 	                                        blockchain.insert(&orphan_block);
                                             let block_serialized: Vec<u8> = bincode::serialize(&block).unwrap();

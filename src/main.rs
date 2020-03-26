@@ -100,6 +100,7 @@ fn main() {
     // Initial state ICO and start a new statechain
     let statechain = Arc::new(Mutex::new(transaction::StateChain::new()));
     statechain.lock().unwrap().insert(blockchain.lock().unwrap().tip_hash, transaction::ico3_proc(initial_pubkey_hashes.clone()));
+    info!("ICO Finished for this process");
     
     // Dispatching processes with corresponding keys
     let self_keypair = if p2p_addr.port() % 1000 < initial_bytes.len() as u16{
@@ -124,6 +125,7 @@ fn main() {
         &blockchain,
         &mempool,
         &statechain,
+        initial_addresses[(p2p_addr.port() % 1000) as usize]
     );
     worker_ctx.start();
 
@@ -133,6 +135,7 @@ fn main() {
         &blockchain,
         &mempool,
         &statechain,
+        initial_addresses[(p2p_addr.port() % 1000) as usize]
     );
     miner_ctx.start();
 

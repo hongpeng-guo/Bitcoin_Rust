@@ -66,12 +66,13 @@ impl Mempool{
         Mempool{data: data_new, total_size: 0}
     }
 
-    pub fn insert(&mut self, transaction: &SignedTransaction) {
+    pub fn insert(&mut self, transaction: &SignedTransaction) -> bool{
         if self.data.contains_key(&Hashable::hash(transaction)){
-            return;
+            return false
         }
         self.data.insert(Hashable::hash(transaction), transaction.clone());
         self.total_size += 1;
+        return true
     }
 
     pub fn insert_vec(&mut self, transaction_vec: Vec<SignedTransaction>) {
